@@ -1,101 +1,76 @@
-# Sistema de Gestión, Menú y Pagos QR para Restaurantes
+# IdentityHub — Plataforma de Gestión Unificada de Identidad e Inventario de Aplicativos
 
 Proyecto de Grado — Ingeniería de Sistemas
 Fundación de Educación Superior Nueva América
 
 **Equipo:** David Yused Pulido Pardo · Eduar de Jesús Ortiz Causil · Jhoan Steven Soto Daza
 
-## Descripción
+> ⚠️ Este repositorio contenía originalmente un sistema de pedidos por QR para restaurantes.
+> Ese trabajo se conserva íntegro en la rama [`archivo/restaurante-qr-v1`](../../tree/archivo/restaurante-qr-v1)
+> y en el tag `v0-restaurante-qr` — no se descartó, se archivó como evidencia de un ciclo de
+> desarrollo completo antes del cambio de enfoque.
 
-Prototipo funcional (MVP) de un sistema de pedidos y pagos por código QR para restaurantes.
-Permite al comensal escanear un QR de su mesa, ver el menú digital, agregar platos al carrito
-y enviar el pedido, con paneles diferenciados para Administrador, Chef y Mesero.
+## El problema
 
-## Stack técnico (MVP actual)
+Las empresas medianas administran decenas de aplicativos (correo, CRM, ERP, herramientas internas),
+pero solo una minoría soporta Single Sign-On (SSO) de forma nativa. Implementar SSO comercial
+(Okta, Azure AD Premium) cuesta desde 6 USD/usuario/mes solo por la plataforma de identidad —
+sin contar que muchos proveedores de software cobran un cargo adicional ("SSO tax") por habilitar
+SAML/OIDC en sus planes empresariales. El resultado: la mayoría de las PYMES vive con contraseñas
+sueltas, sin inventario centralizado de quién tiene acceso a qué, y con un riesgo de seguridad
+crítico y muy común — cuentas de exempleados que nadie revocó porque no había un solo lugar desde
+donde hacerlo.
 
-- **Backend:** Python 3 + Flask
-- **Base de datos:** SQLite (se crea automáticamente al ejecutar la app)
-- **Frontend:** HTML + CSS + JavaScript (Jinja2 templates, sin framework SPA)
-- **Generación de QR:** librería `qrcode`
+## La propuesta
 
-> Nota: el documento de arquitectura del proyecto (carpeta `04_Arquitectura` en Drive) contempla
-> un stack de producción con React/Next.js, PostgreSQL y AWS. El stack actual corresponde a la
-> decisión de alcance tomada para el MVP académico; ver sección de Arquitectura del documento final.
+IdentityHub no reinventa los protocolos de autenticación (eso sería un riesgo de seguridad
+innecesario). Se construye **sobre Keycloak** (Identity Provider open source, estándar de la
+industria) y aporta valor real en dos capas:
 
-## Instalación y ejecución local
+1. **Broker de identidad para aplicativos sin soporte nativo de SSO**: un proxy de autenticación
+   (patrón `auth reverse proxy`, el mismo que usan herramientas como Pomerium o Datawiza) que se
+   antepone a aplicaciones legacy o de plan básico, resolviendo la autenticación sin que la
+   aplicación protegida necesite ningún cambio.
+2. **Inventario y automatización de accesos**: catálogo de qué usuario tiene acceso a qué
+   aplicativo, detección de licencias pagadas sin uso, y — la funcionalidad de mayor impacto en
+   seguridad real — **revocación centralizada en el offboarding**: cuando alguien sale de la
+   empresa, se le retira el acceso a todos los aplicativos desde un solo lugar.
 
-```bash
-pip install -r requirements.txt
-python app.py
-```
+## Estado del proyecto
 
-La consola mostrará que el servidor corre en `http://127.0.0.1:5000`.
+Este repositorio contiene por ahora el **esqueleto técnico inicial** (arquitectura, Keycloak
+levantado vía Docker, y el servicio de inventario en construcción). La investigación de mercado,
+la justificación académica y las encuestas/entrevistas del primer corte **deben ser elaboradas por
+el equipo** — ver `INVESTIGACION_PENDIENTE.md` para el checklist concreto de qué recopilar.
 
-## Despliegue en un ambiente real (DEV/UAT)
+## Stack técnico
 
-El segundo corte exige evidencia de un ambiente accesible fuera de `localhost`. Este proyecto
-está listo para desplegarse gratis en **[Render](https://render.com)** (sin tarjeta de crédito,
-750 horas gratis al mes), que fue la opción evaluada frente a Railway (ya no tiene plan gratis),
-Fly.io (pide tarjeta desde el registro) y PythonAnywhere (su plan gratuito no soporta WebSockets,
-que este proyecto necesita).
-
-**Pasos:**
-
-1. Crear una cuenta en [render.com](https://render.com) con tu cuenta de GitHub (no pide tarjeta).
-2. New → Blueprint → seleccionar este repositorio. Render detecta automáticamente `render.yaml`
-   y configura el servicio (build, start command, y una `FLASK_SECRET_KEY` segura generada sola).
-3. Apply → esperar el primer build (unos minutos).
-4. Render entrega una URL pública tipo `https://restaurante-qr-app.onrender.com`.
-
-**Limitaciones del plan gratuito a tener en cuenta:**
-
-- El servicio se "duerme" tras 15 minutos sin tráfico; la primera petición después de eso tarda
-  hasta ~1 minuto en responder (arranque en frío). Normal para un ambiente de pruebas académico.
-- El archivo `restaurant.db` (SQLite) vive en disco efímero: se reinicia en cada nuevo despliegue.
-  Para datos persistentes entre despliegues habría que migrar a una base de datos gestionada
-  (ej. PostgreSQL, también disponible gratis en Render por 30 días) — ver sección de Arquitectura
-  del documento final para la discusión de este trade-off.
-
-## Tiempo real (WebSocket)
-
-Cocina, mesero y panel admin reciben notificaciones push vía WebSocket (Flask-SocketIO) en vez de
-consultar cada 2 segundos, tal como lo especifica el diagrama de arquitectura del proyecto.
-
-## Variables de entorno
-
-Antes de ejecutar en cualquier ambiente distinto a pruebas locales, define:
-
-```bash
-export FLASK_SECRET_KEY="una-clave-larga-y-aleatoria"
-```
-
-Si no se define, la aplicación usa una clave de desarrollo solo para pruebas locales
-(ver `app.py`).
-
-## Credenciales de prueba (staff)
-
-| Usuario | Clave | Rol |
-|---|---|---|
-| admin | 1234 | Administrador |
-| chef | 1234 | Cocina |
-| mesero | 1234 | Servicio |
+- **Identity Provider:** [Keycloak](https://www.keycloak.org/) (open source, protocolo OIDC/SAML)
+- **Backend de inventario:** Python + Flask (mismo stack que el equipo ya domina)
+- **Base de datos:** PostgreSQL
+- **Orquestación local:** Docker Compose
 
 ## Estructura del repositorio
 
 ```
-app.py              Aplicación Flask (rutas públicas, autenticación, API)
-templates/           Vistas Jinja2 (cliente, login, admin, chef, mesero)
-static/              CSS y JS del cliente
-requirements.txt     Dependencias Python
+docker-compose.yml       Levanta Keycloak + PostgreSQL + el servicio de inventario en local
+inventory-service/       Backend Flask: catálogo de apps, usuarios, licencias, offboarding
+docs/
+  ARQUITECTURA.md         Diagrama y explicación de los 2 componentes técnicos centrales
+  INVESTIGACION_PENDIENTE.md   Checklist de investigación real que debe hacer el equipo
 ```
 
-## Flujo de ramas (GitHub Flow)
+## Cómo levantar el entorno local
 
-Este repositorio sigue [GitHub Flow](https://docs.github.com/es/get-started/using-github/github-flow):
-cada funcionalidad o corrección se desarrolla en una rama descriptiva y se integra a `main`
-mediante Pull Request.
+```bash
+docker compose up -d
+```
 
-## Seguridad
+Esto levanta Keycloak en `http://localhost:8080` (admin/admin por defecto — cambiar antes de
+cualquier uso real) y el servicio de inventario en `http://localhost:5000`.
 
-Los hallazgos de seguridad identificados y su estado de remediación se documentan en
-`08_Seguridad` del Drive del proyecto, con referencia a OWASP WSTG y ASVS.
+## Flujo de trabajo
+
+Este repositorio sigue [GitHub Flow](https://docs.github.com/es/get-started/using-github/github-flow),
+documentado en `CONTRIBUTING.md`. Las plantillas de Issues y Pull Requests ya están configuradas
+en `.github/` y aplican igual que en el proyecto anterior.
