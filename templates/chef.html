@@ -1,0 +1,27 @@
+
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8"><title>Pantalla Cocina</title><link rel="stylesheet" href="/static/styles.css"></head>
+<body>
+    <nav class="admin-nav" style="background:#c0392b;"><h2>Pantalla del Chef <a href="/logout" style="color:white; float:right; font-size:14px;">Salir</a></h2></nav>
+    <main class="admin-container">
+        <h3>Pedidos Pendientes de Preparar</h3>
+        <div id="kitchen-orders" style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px;"></div>
+    </main>
+    <script>
+        function loadOrders() {
+            fetch('/api/orders?status=En Cocina').then(res => res.json()).then(orders => {
+                const container = document.getElementById('kitchen-orders'); container.innerHTML = '';
+                orders.forEach(o => {
+                    container.innerHTML += `
+                        <div class="chef-card">
+                            <h4>Mesa ${o.table}</h4>
+                            <p>${o.items}</p>
+                            <button onclick="updateStatus(${o.id}, 'Listo para Entregar')">Marcar Listo ✅</button>
+                        </div>`;
+                });
+            });
+        }
+        function updateStatus(id, status) { fetch('/api/update_order', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id, status})}); }
+        setInterval(loadOrders, 2000); loadOrders();
+    </script>
+</body></html>
