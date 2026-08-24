@@ -103,7 +103,15 @@ Al abrir un PR, incluir en la descripción:
 
 Los pendientes técnicos viven en [Issues de GitHub](https://github.com/EduarOC/proyecto-de-grado/issues),
 como complemento al tablero de ClickUp (ClickUp para gestión gerencial, Issues para lo técnico
-enlazado al código). Issues abiertos actuales para practicar este flujo:
+enlazado al código). Al crear un Issue nuevo, usar la plantilla correspondiente (aparecen al
+hacer clic en "New Issue"):
+
+- **🐛 Reporte de Bug**: mismos campos de la plantilla oficial de la sección 12.3 de los
+  Lineamientos (Ambiente, Descripción, Severidad, Responsable, Evidencia, Estado).
+- **📋 Historia de Usuario**: mismos campos de la sección 12.2 (Como/Quiero/Para, Prioridad,
+  Criterios de aceptación, Evidencia).
+
+Issues abiertos actuales para practicar este flujo:
 
 - #9 — Decisión sobre pasarela de pago real vs. simulada.
 - #10 — Evaluar migración de SQLite a PostgreSQL.
