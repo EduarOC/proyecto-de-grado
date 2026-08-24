@@ -4,10 +4,16 @@ import sqlite3
 import qrcode
 from io import BytesIO
 import os
+from flask_socketio import SocketIO
 
 app = Flask(__name__)
 app.secret_key = "super_secreto_para_sesiones"
 DB_PATH = 'restaurant.db'
+
+# Notificaciones en tiempo real (WebSocket) hacia cocina, mesero y panel admin,
+# tal como lo define el diagrama de arquitectura del proyecto (04_Arquitectura).
+# Reemplaza el polling anterior (setInterval cada 2s) por push real desde el servidor.
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Imágenes reales de Unsplash para darle el toque profesional
 IMG_HAMBURGUESA = "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&q=80"
@@ -126,8 +132,15 @@ def place_order():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute("INSERT INTO orders (table_num, total, status, items) VALUES (?, ?, 'En Cocina', ?)", (table, total, items_str))
+    new_id = c.lastrowid
     conn.commit()
     conn.close()
+
+    # Notifica en tiempo real a cocina y al panel admin: ya no hace falta esperar
+    # al siguiente ciclo de polling para ver el pedido nuevo.
+    socketio.emit('nuevo_pedido', {
+        "id": new_id, "table": table, "total": total, "status": "En Cocina", "items": items_str
+    })
     return jsonify({"success": True})
 
 @app.route('/api/orders', methods=['GET'])
@@ -154,8 +167,15 @@ def update_order():
     c.execute("UPDATE orders SET status=? WHERE id=?", (new_status, order_id))
     conn.commit()
     conn.close()
+
+    # Notifica en tiempo real: la pantalla del mesero (o del admin) se actualiza
+    # apenas el chef marca el plato como listo, sin esperar el siguiente polling.
+    socketio.emit('actualizacion_pedido', {"id": order_id, "status": new_status})
     return jsonify({"success": True})
 
 if __name__ == '__main__':
     init_db()
-    app.run(debug=True, port=5000)
+    # host=0.0.0.0 y PORT por variable de entorno: requisito para desplegar en un
+    # ambiente DEV/UAT real (Render, Railway, etc.), no solo en localhost.
+    port = int(os.environ.get("PORT", 5000))
+    socketio.run(app, host="0.0.0.0", port=port, debug=True, allow_unsafe_werkzeug=True)

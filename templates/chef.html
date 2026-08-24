@@ -7,6 +7,7 @@
         <h3>Pedidos Pendientes de Preparar</h3>
         <div id="kitchen-orders" style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px;"></div>
     </main>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script>
         function loadOrders() {
             fetch('/api/orders?status=En Cocina').then(res => res.json()).then(orders => {
@@ -22,6 +23,13 @@
             });
         }
         function updateStatus(id, status) { fetch('/api/update_order', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id, status})}); }
-        setInterval(loadOrders, 2000); loadOrders();
+
+        // Tiempo real: la cocina recibe el pedido apenas el comensal paga, sin esperar
+        // un ciclo de polling. Se mantiene loadOrders() inicial por si la conexión
+        // WebSocket tarda en establecerse.
+        const socket = io();
+        socket.on('nuevo_pedido', loadOrders);
+        socket.on('actualizacion_pedido', loadOrders);
+        loadOrders();
     </script>
 </body></html>

@@ -14,6 +14,7 @@
             <tbody id="orders-body"></tbody>
         </table>
     </main>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script>
         function loadOrders() {
             fetch('/api/orders').then(res => res.json()).then(orders => {
@@ -23,6 +24,11 @@
                 });
             });
         }
-        setInterval(loadOrders, 2000); loadOrders();
+
+        // Tiempo real: el historial gerencial se actualiza solo, sin recargar ni esperar.
+        const socket = io();
+        socket.on('nuevo_pedido', loadOrders);
+        socket.on('actualizacion_pedido', loadOrders);
+        loadOrders();
     </script>
 </body></html>
