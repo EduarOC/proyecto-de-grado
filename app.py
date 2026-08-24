@@ -158,4 +158,13 @@ def update_order():
 
 if __name__ == '__main__':
     init_db()
-    app.run(debug=True, port=5000)
+    # host=0.0.0.0 y PORT por variable de entorno: necesario para desplegar en un
+    # ambiente DEV/UAT real (Render, etc.), no solo en localhost.
+    #
+    # IMPORTANTE DE SEGURIDAD: el modo debug de Flask NUNCA debe quedar activo en un
+    # servidor accesible públicamente (el debugger de Werkzeug permite ejecución remota
+    # de código si alguien lo alcanza). Por defecto queda apagado; solo se activa si se
+    # define explícitamente FLASK_DEBUG=1 para desarrollo local.
+    port = int(os.environ.get("PORT", 5000))
+    debug_mode = os.environ.get("FLASK_DEBUG", "0") == "1"
+    app.run(host="0.0.0.0", port=port, debug=debug_mode)
