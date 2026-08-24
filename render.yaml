@@ -1,0 +1,31 @@
+# Blueprint de Render (Infraestructura como Código) para el servicio de inventario de
+# IdentityHub. Sigue el mismo patrón que ya funcionó y se probó en el proyecto anterior
+# (servicio web en Python + base de datos administrada, ambos en el plan gratuito).
+#
+# Keycloak NO está incluido aquí: desplegar una imagen Docker externa (como Keycloak) vía
+# Render Blueprint requiere una sintaxis que no pude verificar contra la documentación
+# actual de Render desde este entorno. Ver docs/ARQUITECTURA.md, sección "Desplegar
+# Keycloak en Render", para el procedimiento manual recomendado (más confiable que
+# adivinar el YAML).
+services:
+  - type: web
+    name: identityhub-inventory
+    runtime: python
+    plan: free
+    buildCommand: "pip install -r inventory-service/requirements.txt"
+    startCommand: "cd inventory-service && python app.py"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: identityhub-db
+          property: connectionString
+      - key: KEYCLOAK_URL
+        sync: false
+        # Se completa manualmente en el dashboard de Render con la URL pública que le
+        # asigne Render al servicio de Keycloak, una vez desplegado (ver docs/ARQUITECTURA.md).
+
+databases:
+  - name: identityhub-db
+    plan: free
+    databaseName: identityhub
+    user: identityhub

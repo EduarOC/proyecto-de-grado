@@ -14,6 +14,9 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    # En Render, la base de datos vive como un servicio administrado aparte (no cuenta contra
+    # el límite de RAM de un web service). Este límite local es solo para desarrollo cómodo.
+    mem_limit: 256m
 
   keycloak:
     image: quay.io/keycloak/keycloak:25.0
@@ -25,11 +28,21 @@ services:
       KC_DB_URL: jdbc:postgresql://postgres:5432/identityhub
       KC_DB_USERNAME: identityhub
       KC_DB_PASSWORD: identityhub_dev_password
+      # Desde Keycloak 24, el heap de la JVM se calcula automáticamente como un porcentaje
+      # de la memoria del contenedor (por defecto ~70%). Por eso el límite de memoria del
+      # contenedor (mem_limit, abajo) es lo que realmente controla cuánto heap toma Keycloak
+      # — sin ese límite, Keycloak puede asumir la memoria completa del host y sobrepasar
+      # los 512 MB gratuitos de Render. Además, se fija un heap explícito conservador como
+      # margen de seguridad extra (dejando espacio para metaspace y memoria nativa).
+      JAVA_OPTS_APPEND: "-Xms128m -Xmx300m -XX:MaxMetaspaceSize=100m"
     ports:
       - "8080:8080"
     depends_on:
       postgres:
         condition: service_healthy
+    # Simula el límite real del plan gratuito de Render (512 MB por servicio web).
+    # Probar localmente con este límite ANTES de desplegar evita sorpresas de memoria en producción.
+    mem_limit: 512m
 
   inventory-service:
     build: ./inventory-service
@@ -41,6 +54,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    # Flask + SQLAlchemy es liviano; 512 MB le sobra, pero se deja el mismo límite que Render
+    # para que las pruebas locales reflejen fielmente el ambiente real de despliegue.
+    mem_limit: 512m
 
 volumes:
   postgres_data:
