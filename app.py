@@ -6,7 +6,10 @@ from io import BytesIO
 import os
 
 app = Flask(__name__)
-app.secret_key = "super_secreto_para_sesiones"
+# ASVS (Configuracion): la secret_key no debe quedar hardcodeada en el codigo fuente.
+# Se lee de la variable de entorno FLASK_SECRET_KEY; si no existe, se usa una clave
+# de desarrollo generada aleatoriamente en cada arranque (solo para pruebas locales).
+app.secret_key = os.environ.get("FLASK_SECRET_KEY") or os.urandom(24).hex()
 DB_PATH = 'restaurant.db'
 
 # Imágenes reales de Unsplash para darle el toque profesional
