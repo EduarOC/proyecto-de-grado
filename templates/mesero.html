@@ -7,6 +7,7 @@
         <h3>Pedidos Listos en Barra</h3>
         <div id="waiter-orders" style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px;"></div>
     </main>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script>
         function loadOrders() {
             fetch('/api/orders?status=Listo para Entregar').then(res => res.json()).then(orders => {
@@ -16,12 +17,17 @@
                         <div class="chef-card" style="border-left: 5px solid #2980b9;">
                             <h4>Llevar a Mesa ${o.table}</h4>
                             <p>${o.items}</p>
-                            <button style="background:#2980b9;" onclick="updateStatus(${o.id}, 'Entregado')">Confirmar Entrega üMΩÔ∏è</button>
+                            <button style="background:#2980b9;" onclick="updateStatus(${o.id}, 'Entregado')">Confirmar Entrega üçΩÔ∏è</button>
                         </div>`;
                 });
             });
         }
         function updateStatus(id, status) { fetch('/api/update_order', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id, status})}); }
-        setInterval(loadOrders, 2000); loadOrders();
+
+        // Tiempo real: en cuanto el chef marca "Listo", el mesero lo ve al instante.
+        const socket = io();
+        socket.on('nuevo_pedido', loadOrders);
+        socket.on('actualizacion_pedido', loadOrders);
+        loadOrders();
     </script>
 </body></html>

@@ -1,6 +1,9 @@
 
-let cartTotal = 0;
-let cartItems = [];
+// El carrito guarda { [dishId]: { name, price, qty } }. El precio mostrado aquí es solo
+// para la experiencia del usuario: el total real siempre se recalcula en el servidor
+// a partir de la tabla `dishes` (ver /api/order en app.py) para que nadie pueda manipular
+// precios o cantidades negativas desde el navegador.
+let cart = {};
 
 document.addEventListener("DOMContentLoaded", () => {
     fetch('/api/dishes')
@@ -18,7 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             </div>
                             <div class="dish-bottom">
                                 <span class="dish-price">$${dish.price.toLocaleString()} COP</span>
-                                <button class="add-btn" onclick="addToCart(${dish.price}, '${dish.name}')">Añadir</button>
+                                <button class="add-btn" onclick="addToCart(${dish.id}, ${dish.price}, '${dish.name}')">Añadir</button>
                             </div>
                         </div>
                     </div>
@@ -27,34 +30,44 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 });
 
-function addToCart(price, name) {
-    cartTotal += price;
-    cartItems.push(name);
+function addToCart(id, price, name) {
+    if (!cart[id]) {
+        cart[id] = { name, price, qty: 0 };
+    }
+    cart[id].qty += 1;
+    updateCartBar();
+}
+
+function updateCartBar() {
     const cartBar = document.getElementById('cart-bar');
+    const entries = Object.values(cart);
+    if (entries.length === 0) {
+        cartBar.style.display = 'none';
+        return;
+    }
+    // Este total es solo informativo para el cliente; el servidor lo vuelve a calcular.
+    const total = entries.reduce((sum, item) => sum + item.price * item.qty, 0);
     cartBar.style.display = 'flex';
-    document.getElementById('cart-total').innerText = 'Total: $' + cartTotal.toLocaleString();
+    document.getElementById('cart-total').innerText = 'Total: $' + total.toLocaleString();
 }
 
 function payOrder(mesa) {
-    if(cartTotal === 0) return;
-    
-    // Cuenta cuántos de cada plato hay para enviar a la cocina
-    const itemCount = {};
-    cartItems.forEach(item => { itemCount[item] = (itemCount[item] || 0) + 1; });
-    const itemsString = Object.entries(itemCount).map(([name, count]) => `${count}x ${name}`).join(', ');
+    const items = Object.entries(cart).map(([id, item]) => ({ id: parseInt(id, 10), qty: item.qty }));
+    if (items.length === 0) return;
 
     fetch('/api/order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ total: cartTotal, table: mesa, items: itemsString })
+        body: JSON.stringify({ table: mesa, items })
     })
     .then(res => res.json())
     .then(data => {
-        if(data.success) {
+        if (data.success) {
             alert('✅ ¡Pago verificado por Pasarela! Tu pedido ha sido enviado a la cocina.');
-            cartTotal = 0;
-            cartItems = [];
-            document.getElementById('cart-bar').style.display = 'none';
+            cart = {};
+            updateCartBar();
+        } else {
+            alert('⚠️ ' + (data.error || 'No se pudo procesar el pedido.'));
         }
     });
 }

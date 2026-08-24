@@ -5,10 +5,19 @@ import qrcode
 from io import BytesIO
 import os
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_socketio import SocketIO
 
 app = Flask(__name__)
-app.secret_key = "super_secreto_para_sesiones"
+# ASVS (Configuracion): la secret_key no debe quedar hardcodeada en el codigo fuente.
+# Se lee de la variable de entorno FLASK_SECRET_KEY; si no existe, se usa una clave
+# de desarrollo generada aleatoriamente en cada arranque (solo para pruebas locales).
+app.secret_key = os.environ.get("FLASK_SECRET_KEY") or os.urandom(24).hex()
 DB_PATH = 'restaurant.db'
+
+# Notificaciones en tiempo real (WebSocket) hacia cocina, mesero y panel admin,
+# tal como lo define el diagrama de arquitectura del proyecto (04_Arquitectura).
+# Reemplaza el polling anterior (setInterval cada 2s) por push real desde el servidor.
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Imágenes reales de Unsplash para darle el toque profesional
 IMG_HAMBURGUESA = "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&q=80"
@@ -121,16 +130,55 @@ def get_dishes():
 
 @app.route('/api/order', methods=['POST'])
 def place_order():
-    data = request.json
-    total = data.get('total', 0)
+    data = request.json or {}
     table = data.get('table', 1)
-    items_str = data.get('items', 'Varios platos')
-    
+    items = data.get('items', [])
+
+    if not isinstance(items, list) or len(items) == 0:
+        return jsonify({"success": False, "error": "El carrito esta vacio."}), 400
+
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
+
+    total = 0
+    items_desc = []
+    for entry in items:
+        try:
+            dish_id = int(entry.get('id'))
+            qty = int(entry.get('qty'))
+        except (TypeError, ValueError, AttributeError):
+            conn.close()
+            return jsonify({"success": False, "error": "Item de pedido invalido."}), 400
+
+        # WSTG-BUSL (logica de negocio) / BUG-001: la cantidad debe ser un entero positivo;
+        # nunca se confia en un valor negativo o no numerico enviado por el navegador.
+        if qty <= 0:
+            conn.close()
+            return jsonify({"success": False, "error": "La cantidad debe ser mayor a cero."}), 400
+
+        c.execute("SELECT name, price FROM dishes WHERE id=?", (dish_id,))
+        dish = c.fetchone()
+        if not dish:
+            conn.close()
+            return jsonify({"success": False, "error": f"El plato {dish_id} no existe."}), 400
+
+        name, price = dish
+        # El precio y el total SIEMPRE se recalculan desde la base de datos:
+        # nunca se confia en el total que pueda enviar el cliente.
+        total += price * qty
+        items_desc.append(f"{qty}x {name}")
+
+    items_str = ", ".join(items_desc)
     c.execute("INSERT INTO orders (table_num, total, status, items) VALUES (?, ?, 'En Cocina', ?)", (table, total, items_str))
+    new_id = c.lastrowid
     conn.commit()
     conn.close()
+
+    # Notifica en tiempo real a cocina y al panel admin: ya no hace falta esperar
+    # al siguiente ciclo de polling para ver el pedido nuevo.
+    socketio.emit('nuevo_pedido', {
+        "id": new_id, "table": table, "total": total, "status": "En Cocina", "items": items_str
+    })
     return jsonify({"success": True})
 
 @app.route('/api/orders', methods=['GET'])
@@ -157,8 +205,21 @@ def update_order():
     c.execute("UPDATE orders SET status=? WHERE id=?", (new_status, order_id))
     conn.commit()
     conn.close()
+
+    # Notifica en tiempo real: la pantalla del mesero (o del admin) se actualiza
+    # apenas el chef marca el plato como listo, sin esperar el siguiente polling.
+    socketio.emit('actualizacion_pedido', {"id": order_id, "status": new_status})
     return jsonify({"success": True})
 
 if __name__ == '__main__':
     init_db()
-    app.run(debug=True, port=5000)
+    # host=0.0.0.0 y PORT por variable de entorno: necesario para desplegar en un
+    # ambiente DEV/UAT real (Render, etc.), no solo en localhost.
+    #
+    # IMPORTANTE DE SEGURIDAD: el modo debug de Flask NUNCA debe quedar activo en un
+    # servidor accesible públicamente (el debugger de Werkzeug permite ejecución remota
+    # de código si alguien lo alcanza). Por defecto queda apagado; solo se activa si se
+    # define explícitamente FLASK_DEBUG=1 para desarrollo local.
+    port = int(os.environ.get("PORT", 5000))
+    debug_mode = os.environ.get("FLASK_DEBUG", "0") == "1"
+    socketio.run(app, host="0.0.0.0", port=port, debug=debug_mode, allow_unsafe_werkzeug=True)

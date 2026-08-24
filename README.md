@@ -31,6 +31,36 @@ python app.py
 
 La consola mostrará que el servidor corre en `http://127.0.0.1:5000`.
 
+## Despliegue en un ambiente real (DEV/UAT)
+
+El segundo corte exige evidencia de un ambiente accesible fuera de `localhost`. Este proyecto
+está listo para desplegarse gratis en **[Render](https://render.com)** (sin tarjeta de crédito,
+750 horas gratis al mes), que fue la opción evaluada frente a Railway (ya no tiene plan gratis),
+Fly.io (pide tarjeta desde el registro) y PythonAnywhere (su plan gratuito no soporta WebSockets,
+que este proyecto necesita).
+
+**Pasos:**
+
+1. Crear una cuenta en [render.com](https://render.com) con tu cuenta de GitHub (no pide tarjeta).
+2. New → Blueprint → seleccionar este repositorio. Render detecta automáticamente `render.yaml`
+   y configura el servicio (build, start command, y una `FLASK_SECRET_KEY` segura generada sola).
+3. Apply → esperar el primer build (unos minutos).
+4. Render entrega una URL pública tipo `https://restaurante-qr-app.onrender.com`.
+
+**Limitaciones del plan gratuito a tener en cuenta:**
+
+- El servicio se "duerme" tras 15 minutos sin tráfico; la primera petición después de eso tarda
+  hasta ~1 minuto en responder (arranque en frío). Normal para un ambiente de pruebas académico.
+- El archivo `restaurant.db` (SQLite) vive en disco efímero: se reinicia en cada nuevo despliegue.
+  Para datos persistentes entre despliegues habría que migrar a una base de datos gestionada
+  (ej. PostgreSQL, también disponible gratis en Render por 30 días) — ver sección de Arquitectura
+  del documento final para la discusión de este trade-off.
+
+## Tiempo real (WebSocket)
+
+Cocina, mesero y panel admin reciben notificaciones push vía WebSocket (Flask-SocketIO) en vez de
+consultar cada 2 segundos, tal como lo especifica el diagrama de arquitectura del proyecto.
+
 ## Variables de entorno
 
 Antes de ejecutar en cualquier ambiente distinto a pruebas locales, define:
