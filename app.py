@@ -118,13 +118,45 @@ def get_dishes():
 
 @app.route('/api/order', methods=['POST'])
 def place_order():
-    data = request.json
-    total = data.get('total', 0)
+    data = request.json or {}
     table = data.get('table', 1)
-    items_str = data.get('items', 'Varios platos')
-    
+    items = data.get('items', [])
+
+    if not isinstance(items, list) or len(items) == 0:
+        return jsonify({"success": False, "error": "El carrito esta vacio."}), 400
+
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
+
+    total = 0
+    items_desc = []
+    for entry in items:
+        try:
+            dish_id = int(entry.get('id'))
+            qty = int(entry.get('qty'))
+        except (TypeError, ValueError, AttributeError):
+            conn.close()
+            return jsonify({"success": False, "error": "Item de pedido invalido."}), 400
+
+        # WSTG-BUSL (logica de negocio) / BUG-001: la cantidad debe ser un entero positivo;
+        # nunca se confia en un valor negativo o no numerico enviado por el navegador.
+        if qty <= 0:
+            conn.close()
+            return jsonify({"success": False, "error": "La cantidad debe ser mayor a cero."}), 400
+
+        c.execute("SELECT name, price FROM dishes WHERE id=?", (dish_id,))
+        dish = c.fetchone()
+        if not dish:
+            conn.close()
+            return jsonify({"success": False, "error": f"El plato {dish_id} no existe."}), 400
+
+        name, price = dish
+        # El precio y el total SIEMPRE se recalculan desde la base de datos:
+        # nunca se confia en el total que pueda enviar el cliente.
+        total += price * qty
+        items_desc.append(f"{qty}x {name}")
+
+    items_str = ", ".join(items_desc)
     c.execute("INSERT INTO orders (table_num, total, status, items) VALUES (?, ?, 'En Cocina', ?)", (table, total, items_str))
     conn.commit()
     conn.close()
