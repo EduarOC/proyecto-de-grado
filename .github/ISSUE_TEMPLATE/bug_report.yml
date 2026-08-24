@@ -1,0 +1,87 @@
+name: "🐛 Reporte de Bug"
+description: Reportar un defecto en DEV o UAT, con los mismos campos de la plantilla oficial del proyecto (sección 12.3 de los Lineamientos).
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: ambiente
+    attributes:
+      label: Ambiente
+      description: ¿Dónde se detectó el bug?
+      options:
+        - DEV
+        - UAT
+    validations:
+      required: true
+
+  - type: textarea
+    id: descripcion
+    attributes:
+      label: Descripción
+      description: Qué ocurre y cuál era el resultado esperado.
+      placeholder: "Ej. El carrito permite agregar cantidades negativas (-1) en vez de bloquear el botón."
+    validations:
+      required: true
+
+  - type: textarea
+    id: pasos
+    attributes:
+      label: Pasos para reproducir
+      placeholder: |
+        1. Ir a...
+        2. Hacer clic en...
+        3. Se observa que...
+    validations:
+      required: false
+
+  - type: dropdown
+    id: severidad
+    attributes:
+      label: Severidad
+      options:
+        - Crítica
+        - Alta
+        - Media
+        - Baja
+    validations:
+      required: true
+
+  - type: input
+    id: responsable
+    attributes:
+      label: Responsable
+      description: Quién queda encargado de solucionarlo (usar también "Assignees" en la barra lateral del Issue).
+    validations:
+      required: false
+
+  - type: textarea
+    id: evidencia
+    attributes:
+      label: Evidencia
+      description: Capturas, video, logs, commit o caso de prueba. Puedes arrastrar imágenes directamente aquí.
+    validations:
+      required: false
+
+  - type: input
+    id: referencia
+    attributes:
+      label: Referencia (opcional)
+      description: Identificador de WSTG/ASVS u otro estándar relacionado, si aplica.
+      placeholder: "Ej. WSTG-BUSL, ASVS cap. Autenticación"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: estado
+    attributes:
+      label: Estado
+      description: "Se puede actualizar después con el estado real (además del estado del Issue en sí: abierto/cerrado)."
+      options:
+        - Abierto
+        - En proceso
+        - Corregido
+        - Validado
+        - Cerrado
+      default: 0
+    validations:
+      required: false

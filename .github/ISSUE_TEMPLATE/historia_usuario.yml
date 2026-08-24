@@ -1,0 +1,59 @@
+name: "📋 Historia de Usuario"
+description: Crear una historia de usuario con el mismo formato de la plantilla oficial del proyecto (sección 12.2 de los Lineamientos).
+title: "[HU] "
+labels: ["historia-usuario"]
+body:
+  - type: input
+    id: rol
+    attributes:
+      label: "Como (rol)"
+      placeholder: "Ej. Comensal, Administrador, Chef, Mesero"
+    validations:
+      required: true
+
+  - type: textarea
+    id: necesidad
+    attributes:
+      label: "Quiero (necesidad)"
+      placeholder: "Ej. escanear un QR para ver el menú digital sin registrarme"
+    validations:
+      required: true
+
+  - type: textarea
+    id: beneficio
+    attributes:
+      label: "Para (beneficio)"
+      placeholder: "Ej. elegir mi plato rápidamente"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: prioridad
+    attributes:
+      label: Prioridad
+      options:
+        - Alta
+        - Media
+        - Baja
+    validations:
+      required: true
+
+  - type: textarea
+    id: criterios
+    attributes:
+      label: Criterios de aceptación
+      description: Condiciones verificables para aprobar la historia (una por línea).
+      placeholder: |
+        - El QR redirige a /mesa/{numero} correcto.
+        - El menú carga en menos de 2s en red 4G.
+        - No aparece ningún formulario de registro obligatorio.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidencia
+    attributes:
+      label: Evidencia
+      description: Captura, prueba, commit, caso QA o demo asociada (se puede completar cuando la historia quede implementada).
+    validations:
+      required: false
