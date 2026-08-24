@@ -4,6 +4,7 @@ import sqlite3
 import qrcode
 from io import BytesIO
 import os
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 app.secret_key = "super_secreto_para_sesiones"
@@ -28,9 +29,10 @@ def init_db():
     # Insertar Usuarios de prueba
     c.execute("SELECT COUNT(*) FROM users")
     if c.fetchone()[0] == 0:
-        c.execute("INSERT INTO users (username, password, role) VALUES ('admin', '1234', 'admin')")
-        c.execute("INSERT INTO users (username, password, role) VALUES ('chef', '1234', 'chef')")
-        c.execute("INSERT INTO users (username, password, role) VALUES ('mesero', '1234', 'mesero')")
+        # WSTG-ATHN-02 / ASVS (Autenticacion): nunca guardar contrasenas en texto plano.
+        c.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", ("admin", generate_password_hash("1234"), "admin"))
+        c.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", ("chef", generate_password_hash("1234"), "chef"))
+        c.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", ("mesero", generate_password_hash("1234"), "mesero"))
         
     # Insertar Platos con imágenes reales
     c.execute("SELECT COUNT(*) FROM dishes")
@@ -72,15 +74,16 @@ def login():
         pw = request.form['password']
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
-        c.execute("SELECT role FROM users WHERE username=? AND password=?", (user, pw))
+        c.execute("SELECT password, role FROM users WHERE username=?", (user,))
         row = c.fetchone()
         conn.close()
-        
-        if row:
-            session['role'] = row[0]
-            if row[0] == 'admin': return redirect(url_for('admin'))
-            if row[0] == 'chef': return redirect(url_for('chef'))
-            if row[0] == 'mesero': return redirect(url_for('mesero'))
+
+        # WSTG-ATHN-02 / ASVS (Autenticacion): se valida con check_password_hash, nunca comparando texto plano.
+        if row and check_password_hash(row[0], pw):
+            session['role'] = row[1]
+            if row[1] == 'admin': return redirect(url_for('admin'))
+            if row[1] == 'chef': return redirect(url_for('chef'))
+            if row[1] == 'mesero': return redirect(url_for('mesero'))
         else:
             return "Credenciales inválidas. Intenta 'admin', 'chef' o 'mesero' con clave '1234'."
     return render_template('login.html')
