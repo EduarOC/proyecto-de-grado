@@ -72,10 +72,11 @@ automáticamente lo que TI no sabe que existe, calificarlo por riesgo, y revocar
 flujo de offboarding que ya cubre los aplicativos conocidos. Esa unificación es el aporte
 diferencial de IdentityHub.
 
-El mecanismo real (documentado pero no integrado aún, ver sección siguiente) es consultar los
-permisos OAuth otorgados vía Google Workspace Admin SDK o Microsoft Graph API — ambas plataformas
-ya exponen esta información en su consola de administración (Security → API Controls), pero sin
-una forma accesible de vincularla con la gestión de accesos y el offboarding.
+El mecanismo real, ya construido (ver sección siguiente), consulta los permisos OAuth
+otorgados vía Microsoft Graph API — la plataforma confirmada de la empresa de origen es
+Microsoft Entra ID. Entra expone esta información en su consola de administración
+(Identity → Applications → Enterprise applications → Consentimiento y permisos), pero sin una
+forma accesible de vincularla con la gestión de accesos y el offboarding — ahí está el aporte.
 
 ## Modelo de datos (servicio de inventario)
 
@@ -99,19 +100,31 @@ explicables (no un modelo de caja negra, para que sea defendible en la sustentac
 Migrar esto a un modelo entrenado con datos reales de uso es una mejora natural para el tercer
 corte, una vez el equipo tenga suficiente historial real de la empresa.
 
-### Integración real pendiente (requiere credenciales que el equipo debe gestionar)
+### Integración real con Microsoft Entra ID (plataforma confirmada)
 
-El endpoint `/api/discovery/importar` hoy acepta una lista ya extraída manualmente (por ejemplo,
-copiada desde Admin Console → Security → API Controls → App Access Control de Google Workspace).
-Para automatizarlo por completo:
+Construida en `discovery-connectors/entra_id.py`. Autentica contra Microsoft Graph API (flujo
+Client Credentials, sin usuario involucrado) y consulta `oauth2PermissionGrants` — las
+concesiones OAuth reales del tenant — resolviendo el nombre de cada aplicativo vía
+`servicePrincipals`. El resultado se envía a `/api/discovery/importar`, el mismo endpoint ya
+construido y probado.
 
-1. Confirmar si la empresa de origen usa Google Workspace o Microsoft 365 (ver
-   `docs/INVESTIGACION_PENDIENTE.md`).
-2. Si es Google Workspace: usar el [Admin SDK Reports API / Token API](https://developers.google.com/admin-sdk/reports)
-   con credenciales de administrador del dominio.
-3. Si es Microsoft 365: usar [Microsoft Graph API — oauth2PermissionGrants](https://learn.microsoft.com/graph/api/resources/oauth2permissiongrant).
-4. Reemplazar la llamada manual por un job periódico que consulte la API real y llame a
-   `/api/discovery/importar` automáticamente.
+Requiere que un administrador de Entra ID de la empresa registre una aplicación con permiso
+`Directory.Read.All` (de solo lectura) y otorgue *admin consent* — instrucciones paso a paso al
+inicio del archivo `discovery-connectors/entra_id.py`.
+
+**Limitación documentada, no oculta:** Microsoft Graph no expone la fecha de último uso
+directamente en `oauth2PermissionGrants`. Obtenerla requiere correlacionar con
+`auditLogs/signIns`, que puede necesitar licencia Entra ID P1/P2 según la retención de logs
+deseada. Por ahora el conector importa `fecha_ultimo_uso=null`, que `calcular_puntaje_riesgo()`
+ya trata como riesgo medio. Correlacionar con el log de inicios de sesión es una mejora natural
+pendiente para un corte posterior, no un dato inventado para completar el actual.
+
+**Probado con respuestas simuladas de Microsoft Graph** (estructura real documentada de la
+API): el conector resuelve nombres de apps correctamente, deduplica cuando varios usuarios
+otorgaron permisos a la misma app, y el formato enviado a `/api/discovery/importar` es
+compatible. **Pendiente de que el equipo lo ejecute contra el tenant real** una vez configurada
+la app registrada — no se probó contra Entra ID real porque este entorno de desarrollo no tiene
+esas credenciales.
 
 ## Flujo crítico: offboarding centralizado
 
