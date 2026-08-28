@@ -25,7 +25,7 @@ donde hacerlo.
 
 IdentityHub no reinventa los protocolos de autenticación (eso sería un riesgo de seguridad
 innecesario). Se construye **sobre Keycloak** (Identity Provider open source, estándar de la
-industria) y aporta valor real en dos capas:
+industria) y aporta valor real en tres capas:
 
 1. **Broker de identidad para aplicativos sin soporte nativo de SSO**: un proxy de autenticación
    (patrón `auth reverse proxy`, el mismo que usan herramientas como Pomerium o Datawiza) que se
@@ -35,6 +35,13 @@ industria) y aporta valor real en dos capas:
    aplicativo, detección de licencias pagadas sin uso, y — la funcionalidad de mayor impacto en
    seguridad real — **revocación centralizada en el offboarding**: cuando alguien sale de la
    empresa, se le retira el acceso a todos los aplicativos desde un solo lugar.
+3. **Descubrimiento de Shadow IT (diferencial frente a la competencia)**: la mayoría de
+   plataformas accesibles para PYMES solo gestionan lo que TI ya conoce. IdentityHub además
+   descubre automáticamente aplicativos conectados por OAuth sin aprobación de TI (vía Google
+   Workspace / Microsoft 365), les asigna un puntaje de riesgo explicable, y los incluye en el
+   mismo flujo de offboarding — cerrando un punto ciego que ni los IdP baratos ni las
+   plataformas de descubrimiento caras (GAT, DoControl) resuelven juntos. Ver
+   `docs/ARQUITECTURA.md`, Decisión 4, para el detalle completo.
 
 ## Estado del proyecto
 
