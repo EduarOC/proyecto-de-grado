@@ -1,0 +1,39 @@
+{
+  "realm": "identityhub",
+  "enabled": true,
+  "clients": [
+    {
+      "clientId": "auth-proxy",
+      "name": "IdentityHub Auth Reverse Proxy",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "auth-proxy-dev-secret-cambiar-en-produccion",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://localhost:9000/auth/callback"
+      ],
+      "webOrigins": [
+        "http://localhost:9000"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "ana.torres",
+      "email": "ana.torres@empresa-ejemplo.com",
+      "firstName": "Ana",
+      "lastName": "Torres",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "identityhub123",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}

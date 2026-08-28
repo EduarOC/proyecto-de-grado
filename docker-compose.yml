@@ -20,7 +20,7 @@ services:
 
   keycloak:
     image: quay.io/keycloak/keycloak:25.0
-    command: start-dev
+    command: start-dev --import-realm
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
@@ -35,6 +35,11 @@ services:
       # los 512 MB gratuitos de Render. Además, se fija un heap explícito conservador como
       # margen de seguridad extra (dejando espacio para metaspace y memoria nativa).
       JAVA_OPTS_APPEND: "-Xms128m -Xmx300m -XX:MaxMetaspaceSize=100m"
+    volumes:
+      # --import-realm carga automáticamente el realm, el cliente del auth-proxy y un usuario
+      # de prueba (ana.torres / identityhub123) al arrancar. Nada que configurar a mano para
+      # probar el flujo de login por primera vez.
+      - ./keycloak-realm:/opt/keycloak/data/import
     ports:
       - "8080:8080"
     depends_on:
@@ -57,6 +62,32 @@ services:
     # Flask + SQLAlchemy es liviano; 512 MB le sobra, pero se deja el mismo límite que Render
     # para que las pruebas locales reflejen fielmente el ambiente real de despliegue.
     mem_limit: 512m
+
+  legacy-app-demo:
+    build: ./legacy-app-demo
+    environment:
+      BACKEND_SERVICE_USER: service-account
+      BACKEND_SERVICE_PASSWORD: clave-de-servicio-cambiar
+    ports:
+      - "6000:6000"
+    mem_limit: 256m
+
+  auth-proxy:
+    build: ./auth-proxy
+    environment:
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: identityhub
+      PROXY_CLIENT_ID: auth-proxy
+      PROXY_CLIENT_SECRET: auth-proxy-dev-secret-cambiar-en-produccion
+      BACKEND_URL: http://legacy-app-demo:6000
+      BACKEND_SERVICE_USER: service-account
+      BACKEND_SERVICE_PASSWORD: clave-de-servicio-cambiar
+    ports:
+      - "9000:9000"
+    depends_on:
+      - keycloak
+      - legacy-app-demo
+    mem_limit: 256m
 
 volumes:
   postgres_data:

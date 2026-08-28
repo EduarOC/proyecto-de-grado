@@ -74,12 +74,19 @@ docker compose up -d
 ```
 
 Esto levanta Keycloak en `http://localhost:8080` (admin/admin por defecto — cambiar antes de
-cualquier uso real) y el servicio de inventario en `http://localhost:5000`.
+cualquier uso real), el servicio de inventario en `http://localhost:5000`, y el auth reverse
+proxy en `http://localhost:9000` (con un aplicativo legacy de demostración detrás, en el puerto
+6000, protegido solo por HTTP Basic Auth — simula un aplicativo real sin soporte de SSO).
 
 **Panel visual:** abrir `http://localhost:5000` en el navegador muestra el panel de
 administración (catálogo de aplicativos, usuarios con botón de offboarding, y el panel de
 Shadow IT ordenado por riesgo). Arranca con datos de ejemplo ilustrativos — ver
 `docs/INVESTIGACION_PENDIENTE.md` para reemplazarlos por el catálogo real de la empresa.
+
+**Probar el auth reverse proxy:** abrir `http://localhost:9000` redirige al login de Keycloak
+(realm y usuario de prueba ya importados automáticamente — `ana.torres` / `identityhub123`).
+Tras iniciar sesión, se accede al aplicativo legacy de demostración sin haber ingresado ninguna
+credencial propia de esa app.
 
 ## Flujo de trabajo
 
