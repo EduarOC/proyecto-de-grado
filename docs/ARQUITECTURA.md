@@ -56,6 +56,40 @@ resuelve un IdP por sí solo. Se necesita un componente intermedio (patrón *aut
 que intercepte el tráfico, autentique contra Keycloak, y le pase la sesión a la aplicación protegida
 sin que esta necesite ningún cambio en su código.
 
+### Implementación del auth reverse proxy (`auth-proxy/`)
+
+Ya tiene código funcional, no solo diseño. Flujo real:
+
+1. El usuario entra a `auth-proxy` intentando llegar al aplicativo legacy protegido.
+2. Si no tiene sesión, se le redirige a `/login`, que inicia el flujo OIDC estándar contra
+   Keycloak (vía [Authlib](https://authlib.org/) — no se reimplementa el protocolo, ver Decisión 1).
+3. Tras el login exitoso en Keycloak, `auth-proxy` guarda una sesión local con el email/nombre
+   del usuario real.
+4. En cada petición siguiente, el proxy la reenvía al aplicativo legacy (`legacy-app-demo/` en
+   este esqueleto) inyectando:
+   - Un header `X-Forwarded-User` con el usuario real, para trazabilidad/auditoría.
+   - Las credenciales de una **cuenta de servicio compartida** (HTTP Basic Auth) que el
+     aplicativo legacy sí entiende — el usuario final nunca ve ni conoce esa credencial.
+
+**Probado end-to-end** (sin necesitar Keycloak real): se simuló una sesión ya autenticada y se
+confirmó que el proxy bloquea sin sesión, inyecta correctamente la credencial de servicio hacia
+el backend, y el backend legacy —que solo entiende Basic Auth y nunca fue modificado— responde
+correctamente identificando al usuario real vía el header.
+
+**Pendiente de verificar por el equipo** (requiere Docker, no disponible en este entorno de
+desarrollo): el flujo completo de login real contra Keycloak. `keycloak-realm/identityhub-realm.json`
+se importa automáticamente al levantar `docker compose up`, con el cliente `auth-proxy` y un
+usuario de prueba ya configurados (`ana.torres` / `identityhub123`), para que probar el login real
+sea inmediato:
+
+```bash
+docker compose up -d
+# Esperar a que Keycloak termine de arrancar (~30-60s)
+# Abrir http://localhost:9000 en el navegador -> redirige a login de Keycloak
+# Iniciar sesión con ana.torres / identityhub123
+# Debe mostrar la respuesta del aplicativo legacy, identificando a ana.torres@empresa-ejemplo.com
+```
+
 **Decisión 3 — El inventario es la capa de valor de negocio.**
 Un IdP le dice "quién inició sesión". No le dice a un administrador "qué aplicativos existen en la
 empresa, quién tiene acceso a cada uno, cuáles licencias se pagan sin usarse, y si a un exempleado
