@@ -30,6 +30,16 @@ class Aplicativo(Base):
     tipo_soporte_sso = Column(String, nullable=False, default="ninguno")
     costo_licencia_mensual = Column(Float, default=0)
 
+    # --- Descubrimiento de Shadow IT (diferencial del proyecto) ---
+    # 'manual' = registrado a mano por un administrador; 'oauth_discovery' = descubierto
+    # automáticamente a partir de los permisos OAuth otorgados en Google Workspace / Microsoft 365.
+    origen = Column(String, nullable=False, default="manual")
+    # Descripción del alcance de permisos OAuth otorgado (ej. "Acceso completo a Drive y Gmail").
+    alcance_oauth = Column(String, nullable=True)
+    fecha_ultimo_uso = Column(DateTime, nullable=True)
+    # Calculado por calcular_puntaje_riesgo() a partir del alcance y la inactividad. 0-100.
+    puntaje_riesgo = Column(Float, nullable=True)
+
     accesos = relationship("Acceso", back_populates="aplicativo")
 
 
@@ -64,6 +74,121 @@ class EventoOffboarding(Base):
     fecha = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     aplicativos_revocados = Column(String)  # lista separada por comas, para el MVP
     responsable = Column(String, nullable=False)
+
+
+def calcular_puntaje_riesgo(alcance_oauth: str, fecha_ultimo_uso):
+    """
+    Puntaje de riesgo (0-100) para un aplicativo descubierto vía OAuth grants.
+
+    Regla simple, pensada para ser defendible y explicable (no una caja negra):
+    - Alcance de permisos: mientras más amplio el acceso otorgado, mayor el riesgo base.
+    - Inactividad: un token OAuth que nadie usa hace meses es más peligroso que uno activo,
+      porque es exactamente el patrón de una cuenta de exempleado que nadie revocó (el
+      hallazgo más citado en la investigación de shadow apps).
+
+    Esto es intencionalmente basado en reglas, no en Machine Learning, para la primera
+    versión: es más fácil de explicar y defender en la sustentación. Migrar a un modelo
+    entrenado con datos reales de uso es una mejora natural para el tercer corte, una vez
+    haya suficiente historial.
+    """
+    alcance = (alcance_oauth or "").lower()
+
+    if any(p in alcance for p in ["completo", "full", "administrador", "admin", "todos los datos"]):
+        base = 70
+    elif any(p in alcance for p in ["lectura", "read", "solo perfil", "basico", "básico"]):
+        base = 20
+    else:
+        base = 40
+
+    bonus_inactividad = 0
+    if fecha_ultimo_uso is not None:
+        dias_inactivo = (datetime.now(timezone.utc) - fecha_ultimo_uso.replace(tzinfo=timezone.utc)).days
+        if dias_inactivo > 180:
+            bonus_inactividad = 30
+        elif dias_inactivo > 90:
+            bonus_inactividad = 20
+        elif dias_inactivo > 30:
+            bonus_inactividad = 10
+    else:
+        # Sin fecha de último uso registrada: se trata como inactividad desconocida, riesgo medio.
+        bonus_inactividad = 15
+
+    return min(100, base + bonus_inactividad)
+
+
+@app.route("/api/discovery/importar", methods=["POST"])
+def importar_apps_descubiertas():
+    """
+    Punto de entrada del componente de descubrimiento de Shadow IT (diferencial del proyecto).
+
+    TODO técnico pendiente (requiere credenciales reales de la empresa, no disponibles en este
+    entorno de desarrollo): reemplazar esta importación manual por una llamada real a:
+    - Google Workspace Admin SDK (Reports API / Token API), si la empresa usa Google Workspace, o
+    - Microsoft Graph API (oauth2PermissionGrants), si usa Microsoft 365.
+
+    Mientras tanto, este endpoint acepta una lista ya extraída manualmente (por ejemplo, copiada
+    desde Admin Console -> Security -> API Controls -> App Access Control) para poder probar el
+    cálculo de riesgo y la integración con el offboarding sin depender de esas credenciales.
+
+    Body esperado: {"apps": [{"nombre": str, "alcance_oauth": str, "fecha_ultimo_uso": "ISO8601" | null}]}
+    """
+    data = request.json or {}
+    apps = data.get("apps", [])
+    if not isinstance(apps, list) or len(apps) == 0:
+        return jsonify({"success": False, "error": "No se recibieron aplicativos para importar."}), 400
+
+    session = SessionLocal()
+    try:
+        importados = []
+        for entry in apps:
+            nombre = entry.get("nombre")
+            if not nombre:
+                continue
+            alcance = entry.get("alcance_oauth")
+            fecha_str = entry.get("fecha_ultimo_uso")
+            fecha_ultimo_uso = datetime.fromisoformat(fecha_str) if fecha_str else None
+
+            riesgo = calcular_puntaje_riesgo(alcance, fecha_ultimo_uso)
+
+            existente = session.query(Aplicativo).filter_by(nombre=nombre, origen="oauth_discovery").first()
+            if existente:
+                existente.alcance_oauth = alcance
+                existente.fecha_ultimo_uso = fecha_ultimo_uso
+                existente.puntaje_riesgo = riesgo
+            else:
+                session.add(Aplicativo(
+                    nombre=nombre, tipo_soporte_sso="ninguno", costo_licencia_mensual=0,
+                    origen="oauth_discovery", alcance_oauth=alcance,
+                    fecha_ultimo_uso=fecha_ultimo_uso, puntaje_riesgo=riesgo,
+                ))
+            importados.append({"nombre": nombre, "puntaje_riesgo": riesgo})
+
+        session.commit()
+        return jsonify({"success": True, "importados": importados})
+    finally:
+        session.close()
+
+
+@app.route("/api/aplicativos/riesgo", methods=["GET"])
+def listar_por_riesgo():
+    """Lista los aplicativos descubiertos vía OAuth, ordenados de mayor a menor riesgo."""
+    session = SessionLocal()
+    try:
+        apps = (
+            session.query(Aplicativo)
+            .filter_by(origen="oauth_discovery")
+            .order_by(Aplicativo.puntaje_riesgo.desc())
+            .all()
+        )
+        return jsonify([
+            {
+                "id": a.id, "nombre": a.nombre, "alcance_oauth": a.alcance_oauth,
+                "fecha_ultimo_uso": a.fecha_ultimo_uso.isoformat() if a.fecha_ultimo_uso else None,
+                "puntaje_riesgo": a.puntaje_riesgo,
+            } for a in apps
+        ])
+    finally:
+        session.close()
 
 
 @app.route("/api/aplicativos", methods=["GET"])

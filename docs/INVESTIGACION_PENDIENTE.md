@@ -10,6 +10,11 @@ El origen de este proyecto es una necesidad real que uno de ustedes vive en su t
 oro para la "Justificación" del documento — pero necesita quedar documentado formalmente:
 
 - [ ] Inventario real: ¿cuántos aplicativos usa la empresa? ¿Cuáles tienen SSO y cuáles no?
+- [ ] **Confirmar si la empresa usa Google Workspace o Microsoft 365** (define qué API integrar
+      para el componente de descubrimiento de Shadow IT — ver `docs/ARQUITECTURA.md`, Decisión 4).
+- [ ] Si es posible, con permiso del administrador de TI: revisar Admin Console → Security → API
+      Controls → App Access Control (Google Workspace) y anotar cuántas apps de terceros aparecen
+      conectadas — esto sería evidencia real y contundente para la sustentación.
 - [ ] Entrevista corta (puede ser al jefe de TI, o auto-relatada si el integrante es quien vive
       el problema) documentando: tiempo perdido administrando accesos manualmente, incidentes de
       cuentas no revocadas a tiempo, costo actual de licencias de aplicativos.
