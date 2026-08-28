@@ -76,6 +76,11 @@ docker compose up -d
 Esto levanta Keycloak en `http://localhost:8080` (admin/admin por defecto — cambiar antes de
 cualquier uso real) y el servicio de inventario en `http://localhost:5000`.
 
+**Panel visual:** abrir `http://localhost:5000` en el navegador muestra el panel de
+administración (catálogo de aplicativos, usuarios con botón de offboarding, y el panel de
+Shadow IT ordenado por riesgo). Arranca con datos de ejemplo ilustrativos — ver
+`docs/INVESTIGACION_PENDIENTE.md` para reemplazarlos por el catálogo real de la empresa.
+
 ## Flujo de trabajo
 
 Este repositorio sigue [GitHub Flow](https://docs.github.com/es/get-started/using-github/github-flow),

@@ -7,9 +7,9 @@ y endpoints básicos de lectura. La integración real con la API de administraci
 proyecto, documentado en docs/ARQUITECTURA.md.
 """
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, render_template
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 
@@ -116,6 +116,29 @@ def calcular_puntaje_riesgo(alcance_oauth: str, fecha_ultimo_uso):
     return min(100, base + bonus_inactividad)
 
 
+@app.route("/")
+def panel():
+    """Panel visual del servicio de inventario. Consume las mismas APIs JSON ya existentes."""
+    return render_template("dashboard.html")
+
+
+@app.route("/api/usuarios", methods=["GET"])
+def listar_usuarios():
+    session = SessionLocal()
+    try:
+        usuarios = session.query(Usuario).all()
+        resultado = []
+        for u in usuarios:
+            num_accesos = session.query(Acceso).filter_by(usuario_id=u.id, fecha_revocado=None).count()
+            resultado.append({
+                "id": u.id, "nombre": u.nombre, "correo": u.correo,
+                "estado": u.estado, "accesos_activos": num_accesos,
+            })
+        return jsonify(resultado)
+    finally:
+        session.close()
+
+
 @app.route("/api/discovery/importar", methods=["POST"])
 def importar_apps_descubiertas():
     """
@@ -193,9 +216,11 @@ def listar_por_riesgo():
 
 @app.route("/api/aplicativos", methods=["GET"])
 def listar_aplicativos():
+    """Catálogo de aplicativos registrados manualmente por TI (excluye los descubiertos vía
+    Shadow IT, que tienen su propia vista en /api/aplicativos/riesgo)."""
     session = SessionLocal()
     try:
-        apps = session.query(Aplicativo).all()
+        apps = session.query(Aplicativo).filter_by(origen="manual").all()
         return jsonify([
             {
                 "id": a.id, "nombre": a.nombre,
@@ -265,7 +290,57 @@ def init_db():
     Base.metadata.create_all(engine)
 
 
+def sembrar_datos_ejemplo():
+    """
+    Datos de ejemplo puramente ilustrativos para poder ver el panel funcionando de inmediato.
+    NO son datos reales de ninguna empresa -- deben reemplazarse por el catálogo real una vez
+    el equipo complete el diagnóstico de docs/INVESTIGACION_PENDIENTE.md.
+    """
+    session = SessionLocal()
+    try:
+        if session.query(Aplicativo).count() > 0:
+            return  # ya hay datos (reales o de una corrida anterior); no sobreescribir
+
+        slack = Aplicativo(nombre="Slack", tipo_soporte_sso="nativo", costo_licencia_mensual=8.0)
+        facturacion = Aplicativo(nombre="Sistema de Facturación Legacy", tipo_soporte_sso="proxy", costo_licencia_mensual=25.0)
+        crm = Aplicativo(nombre="CRM Interno", tipo_soporte_sso="ninguno", costo_licencia_mensual=15.0)
+        session.add_all([slack, facturacion, crm])
+        session.commit()
+
+        ana = Usuario(nombre="Ana Torres", correo="ana@empresa-ejemplo.com", estado="activo")
+        carlos = Usuario(nombre="Carlos Ruiz", correo="carlos@empresa-ejemplo.com", estado="activo")
+        session.add_all([ana, carlos])
+        session.commit()
+
+        session.add_all([
+            Acceso(usuario_id=ana.id, aplicativo_id=slack.id),
+            Acceso(usuario_id=ana.id, aplicativo_id=facturacion.id),
+            Acceso(usuario_id=carlos.id, aplicativo_id=slack.id),
+            Acceso(usuario_id=carlos.id, aplicativo_id=crm.id),
+        ])
+        session.commit()
+
+        # Ejemplos de Shadow IT descubierto, con distinto nivel de riesgo para mostrar el ordenamiento.
+        ahora = datetime.now(timezone.utc)
+        ejemplos_shadow_it = [
+            {"nombre": "Canva (conectado por Marketing)", "alcance_oauth": "Acceso completo a Drive y perfil", "fecha_ultimo_uso": ahora - timedelta(days=200)},
+            {"nombre": "Notion (conectado por Ventas)", "alcance_oauth": "Solo lectura de perfil básico", "fecha_ultimo_uso": ahora - timedelta(days=5)},
+            {"nombre": "App desconocida (token huérfano)", "alcance_oauth": "Acceso completo a Gmail", "fecha_ultimo_uso": None},
+        ]
+        for ej in ejemplos_shadow_it:
+            riesgo = calcular_puntaje_riesgo(ej["alcance_oauth"], ej["fecha_ultimo_uso"])
+            session.add(Aplicativo(
+                nombre=ej["nombre"], tipo_soporte_sso="ninguno", costo_licencia_mensual=0,
+                origen="oauth_discovery", alcance_oauth=ej["alcance_oauth"],
+                fecha_ultimo_uso=ej["fecha_ultimo_uso"], puntaje_riesgo=riesgo,
+            ))
+        session.commit()
+    finally:
+        session.close()
+
+
 if __name__ == "__main__":
     init_db()
+    sembrar_datos_ejemplo()
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=os.environ.get("FLASK_DEBUG", "0") == "1")

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IdentityHub — Panel de Control</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header class="topbar">
+        <div class="brand">
+            <span class="brand-mark">●</span>
+            <span class="brand-name">Identity<strong>Hub</strong></span>
+        </div>
+        <div class="topbar-sub">Panel de administración · datos de ejemplo</div>
+    </header>
+
+    <main class="wrap">
+        <section class="kpis" id="kpis">
+            <div class="kpi-card">
+                <span class="kpi-label">Aplicativos gestionados</span>
+                <span class="kpi-value" id="kpi-apps">—</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">Usuarios activos</span>
+                <span class="kpi-value" id="kpi-usuarios">—</span>
+            </div>
+            <div class="kpi-card kpi-alert">
+                <span class="kpi-label">Shadow IT de alto riesgo</span>
+                <span class="kpi-value" id="kpi-riesgo">—</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-label">Costo mensual en licencias</span>
+                <span class="kpi-value" id="kpi-costo">—</span>
+            </div>
+        </section>
+
+        <section class="grid">
+            <div class="panel">
+                <div class="panel-head">
+                    <h2>Usuarios</h2>
+                    <span class="panel-hint">Offboarding revoca todos los accesos activos, incluido Shadow IT</span>
+                </div>
+                <table class="data-table" id="tabla-usuarios">
+                    <thead>
+                        <tr><th>Nombre</th><th>Correo</th><th>Estado</th><th>Accesos activos</th><th></th></tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div class="panel">
+                <div class="panel-head">
+                    <h2>Catálogo de aplicativos</h2>
+                    <span class="panel-hint">Registrados manualmente por TI</span>
+                </div>
+                <table class="data-table" id="tabla-aplicativos">
+                    <thead>
+                        <tr><th>Aplicativo</th><th>Soporte SSO</th><th>Costo/mes</th></tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="panel panel-shadow">
+            <div class="panel-head">
+                <h2>Shadow IT descubierto <span class="diff-tag">diferencial del proyecto</span></h2>
+                <span class="panel-hint">Aplicativos conectados por OAuth sin aprobación de TI, ordenados por riesgo</span>
+            </div>
+            <div class="shadow-grid" id="shadow-grid"></div>
+        </section>
+
+        <footer class="foot-note">
+            Datos de ejemplo ilustrativos — no corresponden a ninguna empresa real. Ver
+            <code>docs/INVESTIGACION_PENDIENTE.md</code> para reemplazarlos por el catálogo real.
+        </footer>
+    </main>
+
+    <div class="toast" id="toast"></div>
+
+    <script src="/static/dashboard.js"></script>
+</body>
+</html>
