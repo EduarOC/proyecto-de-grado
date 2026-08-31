@@ -10,17 +10,19 @@ El origen de este proyecto es una necesidad real que uno de ustedes vive en su t
 oro para la "Justificación" del documento — pero necesita quedar documentado formalmente:
 
 - [ ] Inventario real: ¿cuántos aplicativos usa la empresa? ¿Cuáles tienen SSO y cuáles no?
-- [ ] **Confirmar si la empresa usa Google Workspace o Microsoft 365** (define qué API integrar
-      para el componente de descubrimiento de Shadow IT — ver `docs/ARQUITECTURA.md`, Decisión 4).
-- [ ] Si es posible, con permiso del administrador de TI: revisar Admin Console → Security → API
-      Controls → App Access Control (Google Workspace) y anotar cuántas apps de terceros aparecen
-      conectadas — esto sería evidencia real y contundente para la sustentación.
+- [x] **Plataforma confirmada: Microsoft Entra ID.** El conector real de descubrimiento de
+      Shadow IT ya está construido en `discovery-connectors/entra_id.py` — ver instrucciones de
+      configuración (registro de app, permisos, admin consent) al inicio de ese archivo.
+- [ ] Ejecutar `discovery-connectors/entra_id.py` contra el tenant real una vez configurada la
+      app registrada en Entra ID, y guardar los resultados como evidencia real para la
+      sustentación (cuántas apps de Shadow IT aparecieron, cuáles quedaron con riesgo alto).
 - [ ] Entrevista corta (puede ser al jefe de TI, o auto-relatada si el integrante es quien vive
       el problema) documentando: tiempo perdido administrando accesos manualmente, incidentes de
       cuentas no revocadas a tiempo, costo actual de licencias de aplicativos.
-- [ ] Cotización real: pedir una cotización (o revisar el pricing público) de Okta, Azure AD
-      Premium o Google Workspace SSO para el número de usuarios de la empresa, para tener una
-      cifra propia de cuánto costaría la alternativa comercial.
+- [ ] Cotización real: pedir una cotización (o revisar el pricing público) de Entra ID
+      Governance ($6-12 USD/usuario/mes según fuente, ver `docs/ARQUITECTURA.md`) para el número
+      de usuarios de la empresa, para tener una cifra propia de cuánto costaría la alternativa
+      comercial que ya incluye Lifecycle Workflows.
 
 ## 2. Validación de que el problema no es exclusivo de una empresa
 

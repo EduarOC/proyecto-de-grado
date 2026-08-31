@@ -88,6 +88,10 @@ Shadow IT ordenado por riesgo). Arranca con datos de ejemplo ilustrativos — ve
 Tras iniciar sesión, se accede al aplicativo legacy de demostración sin haber ingresado ninguna
 credencial propia de esa app.
 
+**Descubrimiento de Shadow IT contra la empresa real (Microsoft Entra ID):** ver
+`discovery-connectors/entra_id.py` para las instrucciones completas de configuración (registro
+de app en Entra ID, permisos, admin consent) y cómo ejecutarlo contra el tenant real.
+
 ## Flujo de trabajo
 
 Este repositorio sigue [GitHub Flow](https://docs.github.com/es/get-started/using-github/github-flow),
