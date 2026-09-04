@@ -5,11 +5,6 @@ Fundación de Educación Superior Nueva América
 
 **Equipo:** David Yused Pulido Pardo · Eduar de Jesús Ortiz Causil · Jhoan Steven Soto Daza
 
-> ⚠️ Este repositorio contenía originalmente un sistema de pedidos por QR para restaurantes.
-> Ese trabajo se conserva íntegro en la rama [`archivo/restaurante-qr-v1`](../../tree/archivo/restaurante-qr-v1)
-> y en el tag `v0-restaurante-qr` — no se descartó, se archivó como evidencia de un ciclo de
-> desarrollo completo antes del cambio de enfoque.
-
 ## El problema
 
 Las empresas medianas administran decenas de aplicativos (correo, CRM, ERP, herramientas internas),
