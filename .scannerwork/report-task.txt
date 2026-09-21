@@ -1,0 +1,7 @@
+organization=sotojhoan
+projectKey=proyecto-de-grado
+serverUrl=https://sonarcloud.io
+serverVersion=8.0.0.107035
+dashboardUrl=https://sonarcloud.io/dashboard?id=proyecto-de-grado
+ceTaskId=AaDCA8W36COkR7KPV948
+ceTaskUrl=https://sonarcloud.io/api/ce/task?id=AaDCA8W36COkR7KPV948
