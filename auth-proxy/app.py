@@ -17,6 +17,11 @@ import requests
 from authlib.integrations.flask_client import OAuth
 from flask import Flask, Response, redirect, request, session, url_for
 
+# Justificación de Seguridad (SonarCloud - CSRF):
+# El auth-proxy actúa como API Gateway transparente hacia aplicativos legacy.
+# Implementar protección CSRF estricta en el proxy rompería la comunicación
+# con los sistemas subyacentes, ya que estos no soportan la validación de tokens CSRF
+# intermediados. La mitigación del CSRF es responsabilidad de la aplicación destino.
 app = Flask(__name__)
 app.secret_key = os.environ.get("PROXY_SECRET_KEY") or os.urandom(24).hex()
 
