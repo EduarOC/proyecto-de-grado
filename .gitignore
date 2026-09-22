@@ -6,3 +6,11 @@ venv/
 env/
 .env
 .DS_Store
+
+# SonarQube / SonarScanner
+.scannerwork/
+sonar-scanner*/
+sonar-scanner.zip
+
+# Archivos temporales de Office
+~$*

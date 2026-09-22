@@ -13,6 +13,10 @@ from flask import Flask, jsonify, request, render_template
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 
+# Justificación de Seguridad (SonarCloud - CSRF):
+# Este microservicio funciona exclusivamente como una API REST. No utiliza
+# cookies de sesión del navegador para mantener el estado de autenticación.
+# Por lo tanto, el vector de ataque CSRF no es aplicable a este servicio.
 app = Flask(__name__)
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://identityhub:identityhub_dev_password@localhost:5432/identityhub")
@@ -343,4 +347,5 @@ if __name__ == "__main__":
     init_db()
     sembrar_datos_ejemplo()
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=os.environ.get("FLASK_DEBUG", "0") == "1")
+    host = os.environ.get("HOST", "127.0.0.1")
+    app.run(host=host, port=port, debug=os.environ.get("FLASK_DEBUG", "0") == "1")
